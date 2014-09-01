@@ -102,29 +102,32 @@ float4 frag( v2f i ) : COLOR
 
 	float4 frag = float4(0,0,0,1);
 			
-			
-	#ifdef ANTONOV_64_SAMPLES && ANTONOV_IMPORTANCE_DIFFUSE
-		frag.rgb += DiffuseIBL(normal, 64);
+	#ifdef ANTONOV_IMPORTANCE_DIFFUSE	
+		#ifdef ANTONOV_64_SAMPLES
+			frag.rgb += DiffuseIBL(normal, 64);
+		#endif
+		
+		#ifdef ANTONOV_128_SAMPLES
+			frag.rgb += DiffuseIBL(normal, 128);
+		#endif
+		
+		#ifdef ANTONOV_256_SAMPLES
+			frag.rgb += DiffuseIBL(normal, 256);
+		#endif
 	#endif
 	
-	#ifdef ANTONOV_128_SAMPLES && ANTONOV_IMPORTANCE_DIFFUSE
-		frag.rgb += DiffuseIBL(normal, 128);
-	#endif
-	
-	#ifdef ANTONOV_256_SAMPLES && ANTONOV_IMPORTANCE_DIFFUSE
-		frag.rgb += DiffuseIBL(normal, 256);
-	#endif
-	
-	#ifdef ANTONOV_64_SAMPLES && ANTONOV_IMPORTANCE_SPECULAR 
-		frag.rgb += SpecularIBL(_Shininess, normal, 64);
-	#endif
-	
-	#ifdef ANTONOV_128_SAMPLES && ANTONOV_IMPORTANCE_SPECULAR
-		frag.rgb += SpecularIBL(_Shininess, normal, 128);
-	#endif
-	
-	#ifdef ANTONOV_256_SAMPLES && ANTONOV_IMPORTANCE_SPECULAR
-		frag.rgb += SpecularIBL(_Shininess, normal, 256);
+	#ifdef ANTONOV_IMPORTANCE_SPECULAR 
+		#ifdef ANTONOV_64_SAMPLES 
+			frag.rgb += SpecularIBL(_Shininess, normal, 64);
+		#endif
+		
+		#ifdef ANTONOV_128_SAMPLES
+			frag.rgb += SpecularIBL(_Shininess, normal, 128);
+		#endif
+		
+		#ifdef ANTONOV_256_SAMPLES
+			frag.rgb += SpecularIBL(_Shininess, normal, 256);
+		#endif
 	#endif
 				
 	return HDRtoRGBM(frag);
