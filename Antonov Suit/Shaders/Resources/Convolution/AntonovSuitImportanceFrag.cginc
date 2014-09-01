@@ -2,7 +2,7 @@
 #define ANTONOV_SUIT_CONVOLVE_FRAG
 
 // Brian Karis, Epic Games "Real Shading in Unreal Engine 4"
-float3 DiffuseIBL(float3 R, int NumSamples )
+float3 DiffuseIBL(float3 R, int NumSamples, int cubeSize )
 {
 	float3 N = R;
 	float3 V = R;
@@ -29,7 +29,7 @@ float3 DiffuseIBL(float3 R, int NumSamples )
 		float NoL = saturate(dot(N, L));
 		if( NoL > 0 )
 		{
-			SampleColor += DecodeRGBMLinear(texCUBElod(_DiffCubeIBL, float4(L.xyz,calcLOD(_diffuseSize, L.w, NumSamples)))) * NoL;
+			SampleColor += DecodeRGBMLinear(texCUBElod(_DiffCubeIBL, float4(L.xyz,calcLOD(cubeSize, L.w, NumSamples)))) * NoL;
 			TotalWeight += NoL;
 		}
 	}
@@ -37,7 +37,7 @@ float3 DiffuseIBL(float3 R, int NumSamples )
 }
 
 // Brian Karis, Epic Games "Real Shading in Unreal Engine 4"
-float3 SpecularIBL( float Roughness, float3 R, int NumSamples )
+float3 SpecularIBL( float Roughness, float3 R, int NumSamples, int cubeSize )
 {
 	float3 N = R;
 	float3 V = R;
@@ -67,7 +67,7 @@ float3 SpecularIBL( float Roughness, float3 R, int NumSamples )
 	               
 		if( NoL > 0 )
 		{
-			SampleColor += DecodeRGBMLinear(texCUBElod(_SpecCubeIBL, float4(L, calcLOD(_specularSize, H.w, NumSamples)))) * NoL;
+			SampleColor += DecodeRGBMLinear(texCUBElod(_SpecCubeIBL, float4(L, calcLOD(cubeSize, H.w, NumSamples)))) * NoL;
 				                        
 			TotalWeight += NoL;
 		}  
@@ -104,29 +104,29 @@ float4 frag( v2f i ) : COLOR
 			
 	#ifdef ANTONOV_IMPORTANCE_DIFFUSE	
 		#ifdef ANTONOV_64_SAMPLES
-			frag.rgb += DiffuseIBL(normal, 64);
+			frag.rgb += DiffuseIBL(normal, 64, _diffuseSize);
 		#endif
 		
 		#ifdef ANTONOV_128_SAMPLES
-			frag.rgb += DiffuseIBL(normal, 128);
+			frag.rgb += DiffuseIBL(normal, 128, _diffuseSize);
 		#endif
 		
 		#ifdef ANTONOV_256_SAMPLES
-			frag.rgb += DiffuseIBL(normal, 256);
+			frag.rgb += DiffuseIBL(normal, 256, _diffuseSize);
 		#endif
 	#endif
 	
 	#ifdef ANTONOV_IMPORTANCE_SPECULAR 
 		#ifdef ANTONOV_64_SAMPLES 
-			frag.rgb += SpecularIBL(_Shininess, normal, 64);
+			frag.rgb += SpecularIBL(_Shininess, normal, 64, _specularSize);
 		#endif
 		
 		#ifdef ANTONOV_128_SAMPLES
-			frag.rgb += SpecularIBL(_Shininess, normal, 128);
+			frag.rgb += SpecularIBL(_Shininess, normal, 128, _specularSize);
 		#endif
 		
 		#ifdef ANTONOV_256_SAMPLES
-			frag.rgb += SpecularIBL(_Shininess, normal, 256);
+			frag.rgb += SpecularIBL(_Shininess, normal, 256, _specularSize);
 		#endif
 	#endif
 				

@@ -2,6 +2,7 @@
 {
 	Properties 
 	{
+		_diffuseSize("Diffuse Cube Size", float) = 256
 		_DiffCubeIBL ("Diffuse Cube", Cube) = "black" {}
 	}
 	SubShader 

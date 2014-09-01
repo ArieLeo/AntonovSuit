@@ -3,6 +3,7 @@
 	Properties 
 	{
 		_Shininess("Roughness", Range (0.001,1)) = 1.0
+		_specularSize("Specular Cube Size", float) = 256
 		_SpecCubeIBL ("Specular Cube", Cube) = "black" {}
 	}
 	SubShader 
