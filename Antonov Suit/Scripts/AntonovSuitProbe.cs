@@ -1023,6 +1023,14 @@ public class AntonovSuitProbe : MonoBehaviour
 		goBake = false;
 	}
 
+	void OnDestroy() 
+	{
+		DestroyImmediate(previewMaterial);
+		DestroyImmediate(convolveDiffuseSkybox);
+		DestroyImmediate(convolveSpecularSkybox);
+		DestroyImmediate(previewProbe);
+	}
+
 	void OnDrawGizmosSelected()
 	{
 		if (typeOfProjection == ProjectionType.SphereProjection) 
@@ -1032,11 +1040,11 @@ public class AntonovSuitProbe : MonoBehaviour
 			//Rotate the gizmos
 			Gizmos.matrix = transform.localToWorldMatrix;
 			Gizmos.color = Color.green;
-			Gizmos.DrawWireSphere(transform.position, probeRadius );
+			Gizmos.DrawWireSphere(Vector3.zero, probeRadius );
 			if(useAtten == true)
 			{
 				Gizmos.color = Color.yellow;
-				Gizmos.DrawWireSphere(transform.position, attenSphereRadius );
+				Gizmos.DrawWireSphere(Vector3.zero, attenSphereRadius );
 			}
 		}
 		if (typeOfProjection == ProjectionType.BoxProjection) 
@@ -1046,13 +1054,15 @@ public class AntonovSuitProbe : MonoBehaviour
 
 
 			//Rotate the gizmos
-			Gizmos.matrix = transform.localToWorldMatrix;
+
 			Gizmos.color = Color.blue;
-			Gizmos.DrawWireCube(transform.position, probeBoxSize );
+			Gizmos.matrix = transform.localToWorldMatrix;
+			Gizmos.DrawWireCube(Vector3.zero, probeBoxSize );
+
 			if(useAtten == true)
 			{
 				Gizmos.color = Color.yellow;
-				Gizmos.DrawWireCube(transform.position, attenBoxSize );
+				Gizmos.DrawWireCube(Vector3.zero, attenBoxSize );
 			}
 		}
 	}
