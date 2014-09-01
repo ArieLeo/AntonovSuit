@@ -49,7 +49,7 @@ public class AntonovSuitProbe : MonoBehaviour
 	public qualitySamples specularSamples = qualitySamples.Low;
 
 	public int smoothEdge = 4;
-	public float edgeScale = 0.1f;
+	//public float edgeScale = 0.1f;
 	
 	private Material[] m_materials;
 
@@ -95,15 +95,14 @@ public class AntonovSuitProbe : MonoBehaviour
 	private Vector3 cubePos;
 
 	//Importance sampled material for skybox
-	public Material convolveDiffuseSkybox;
-	public Material convolveSpecularSkybox;
+	private Material convolveDiffuseSkybox;
+	private Material convolveSpecularSkybox;
 
 	public int specularExponent = 1;
 
 	//PREVIEW
 	public GameObject previewProbe;
-	private Cubemap	previewCube;
-	private Material previewMaterial;
+	public Material previewMaterial;
 
 	//Always true
 	private bool RGBM = true;
@@ -216,44 +215,6 @@ public class AntonovSuitProbe : MonoBehaviour
 		}
 		return result;
 	}
-	
-	int qualitySetup(bool isDiffuse)
-	{
-		
-		int result= 0;
-		
-		if( isDiffuse == true )
-		{
-			if(diffuseSamples == qualitySamples.Low)
-			{
-				result = 64;
-			}
-			if(diffuseSamples == qualitySamples.Medium)
-			{
-				result  = 128;
-			}
-			if(diffuseSamples == qualitySamples.High)
-			{
-				result  = 256;
-			}
-		}
-		else
-		{
-			if(specularSamples == qualitySamples.Low)
-			{
-				result = 64;
-			}
-			if(specularSamples == qualitySamples.Medium)
-			{
-				result  = 128;
-			}
-			if(specularSamples == qualitySamples.High)
-			{
-				result  = 256;
-			}
-		}
-		return result;
-	}
 
 	// Resize a Texture2D
 	// http://docs-jp.unity3d.com/Documentation/ScriptReference/Texture2D.GetPixelBilinear.html
@@ -315,6 +276,33 @@ public class AntonovSuitProbe : MonoBehaviour
 		DestroyImmediate(tex);
 	}
 
+	Quaternion RotationInv(CubemapFace face)
+	{
+		Quaternion result;
+		switch(face)
+		{
+		case CubemapFace.PositiveX:
+			result = Quaternion.Euler(0, 90, -180);
+			break;
+		case CubemapFace.NegativeX:
+			result = Quaternion.Euler(0, -90, 180);
+			break;
+		case CubemapFace.PositiveY:
+			result = Quaternion.Euler(-90, 0, 0);
+			break;
+		case CubemapFace.NegativeY:
+			result = Quaternion.Euler(90, 0, 0);
+			break;
+		case CubemapFace.NegativeZ:
+			result = Quaternion.Euler(-180, 0, 0);
+			break;
+		default:
+			result = Quaternion.Euler(0, 0, -180);
+			break;
+		}
+		return result;
+	}
+
 	IEnumerator CaptureImportanceSample(Cubemap cubemap,CubemapFace face,Camera cam, int mip)
 	{
 
@@ -324,7 +312,6 @@ public class AntonovSuitProbe : MonoBehaviour
 		var height = Screen.height;
 		Texture2D tex = new Texture2D(height, height, TextureFormat.ARGB32, false);
 
-		
 		cam.transform.localRotation = Rotation(face);
 		
 		yield return new WaitForEndOfFrame();
@@ -333,7 +320,7 @@ public class AntonovSuitProbe : MonoBehaviour
 		tex.Apply();
 
 		int cubeSize = Mathf.Max(1, cubemap.width >> mip );
-
+	
 		tex = Resize(tex, cubeSize,cubeSize,true);
 
 		Color[] tempCol = tex.GetPixels();
@@ -488,15 +475,19 @@ public class AntonovSuitProbe : MonoBehaviour
 		// Initialise the rotation - this will be changed for each texture grab
 		cubeCamera.transform.rotation = Quaternion.identity;
 
+		/*
 		if(convolve == false && SystemInfo.graphicsShaderLevel != 50)
 		{
 			CubeSizeSetup(false);
-			cubeCamera.fieldOfView = 90 + 90f / (float)specularSize * edgeScale;
+			cubeCamera.fieldOfView = 90 + 90f / (float)64 * 0.7f;
 		}
 		else
 		{
 			cubeCamera.fieldOfView = 90;
 		}
+		*/
+
+		cubeCamera.fieldOfView = 90;
 
 		// Ensure this camera renders above all others
 		cubeCamera.depth = float.MaxValue;
@@ -509,26 +500,33 @@ public class AntonovSuitProbe : MonoBehaviour
 			cubeCamera.cullingMask = 0;
 		}
 
-		//if(convolve == false)
-		//{
+
 			// HDR TO RGBM
 			if(RGBM == true )
 			{
-				
-				bool hasPro = UnityEditorInternal.InternalEditorUtility.HasPro();
-				
-				if( hasPro == true )
-				{		
-					cubeCamera.hdr = true;	
-					go.AddComponent<HDRtoRGBM>();
-				}
-				else
-				{
-					cubeCamera.hdr = false;
-					go.AddComponent<RGBM>();
-				}
+
+					bool hasPro = UnityEditorInternal.InternalEditorUtility.HasPro();
+					
+					if( hasPro == true && convolve == false )
+					{		
+						cubeCamera.hdr = true;	
+						go.AddComponent<HDRtoRGBM>();
+					}
+					if( hasPro == false && convolve == false )
+					{
+						cubeCamera.hdr = false;
+						go.AddComponent<RGBM>();
+					}
+					if( hasPro == true && convolve == true )
+					{
+						cubeCamera.hdr = true;
+					}
+					if( hasPro == false  && convolve == true )
+					{
+						cubeCamera.hdr = false;
+					}
 			}
-		//}
+	
 	}
 
 	IEnumerator ConvolveIrradiance()
@@ -571,31 +569,62 @@ public class AntonovSuitProbe : MonoBehaviour
 		int size = 0;
 		int samples = 0;
 		size = CubeSizeSetup(true);
-		samples = qualitySetup(true);
 
 		if(irradianceModel == irradianceEnum.SphereUniform)
 		{
-			convolveDiffuseSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Irradiance/Sphere"));
+			if(diffuseSamples == qualitySamples.Low)
+			{
+				convolveDiffuseSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Irradiance/Sphere 64"));
+			}
+			if(diffuseSamples == qualitySamples.Medium)
+			{
+				convolveDiffuseSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Irradiance/Sphere 64"));
+			}
+			if(diffuseSamples == qualitySamples.High)
+			{
+				convolveDiffuseSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Irradiance/Sphere 64"));
+			}
 		}
 		if(irradianceModel == irradianceEnum.HemisphereUniform)
 		{
-			convolveDiffuseSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Irradiance/Hemisphere"));
+			if(diffuseSamples == qualitySamples.Low)
+			{
+				convolveDiffuseSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Irradiance/Hemisphere 64"));
+			}
+			if(diffuseSamples == qualitySamples.Medium)
+			{
+				convolveDiffuseSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Irradiance/Hemisphere 128"));
+			}
+			if(diffuseSamples == qualitySamples.High)
+			{
+				convolveDiffuseSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Irradiance/Hemisphere 256"));
+			}
 		}
 		if(irradianceModel == irradianceEnum.HemisphereCosine)
 		{
-			convolveDiffuseSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Irradiance/Cosine"));
+			if(diffuseSamples == qualitySamples.Low)
+			{
+				convolveDiffuseSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Irradiance/Cosine 64"));
+			}
+			if(diffuseSamples == qualitySamples.Medium)
+			{
+				convolveDiffuseSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Irradiance/Cosine 128"));
+			}
+			if(diffuseSamples == qualitySamples.High)
+			{
+				convolveDiffuseSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Irradiance/Cosine 256"));
+			}
 		}
 
 		convolveDiffuseSkybox.SetTexture("_DiffCubeIBL", diffuseCube);
 		convolveDiffuseSkybox.SetInt("_diffuseSize", size);
-		convolveDiffuseSkybox.SetInt("_diffSamples",samples);
-
-
 
 		UnityEngine.RenderSettings.skybox = convolveDiffuseSkybox;
 			
 		Cubemap tempCube = new Cubemap(size, TextureFormat.ARGB32, false);
 			
+		//cubeCamera.RenderToCubemap(tempCube);
+
 		yield return StartCoroutine(Capture(tempCube, CubemapFace.PositiveZ, cubeCamera));
 		yield return StartCoroutine(Capture(tempCube, CubemapFace.PositiveX, cubeCamera));
 		yield return StartCoroutine(Capture(tempCube, CubemapFace.NegativeX, cubeCamera));
@@ -604,11 +633,11 @@ public class AntonovSuitProbe : MonoBehaviour
 		yield return StartCoroutine(Capture(tempCube, CubemapFace.NegativeY, cubeCamera));
 
 		// v0.035 this fix the ugly mipmap transition
-		tempCube.filterMode = FilterMode.Trilinear;
-		tempCube.wrapMode = TextureWrapMode.Clamp;
+		//tempCube.filterMode = FilterMode.Trilinear;
+		//tempCube.wrapMode = TextureWrapMode.Clamp;
 			
 		tempCube.Apply();
-			
+
 		diffuseCube = tempCube;
 
 		string convolvedDiffusePath = GetOutPutPath(diffuseCube,true);
@@ -625,20 +654,41 @@ public class AntonovSuitProbe : MonoBehaviour
 		int size = 0;
 		int samples = 0;
 		size = CubeSizeSetup(false);
-		samples = qualitySetup(false);
 
 		if(radianceModel == radianceEnum.BlinnPhong)
 		{
-			convolveSpecularSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Radiance/Blinn"));
+			if(specularSamples == qualitySamples.Low)
+			{
+				convolveSpecularSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Radiance/Blinn 64"));
+			}
+			if(specularSamples == qualitySamples.Medium)
+			{
+				convolveSpecularSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Radiance/Blinn 128"));
+			}
+			if(specularSamples == qualitySamples.High)
+			{
+				convolveSpecularSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Radiance/Blinn 256"));
+			}
 		}
+
 		if(radianceModel == radianceEnum.GGX)
 		{
-			convolveSpecularSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Radiance/GGX"));
+			if(specularSamples == qualitySamples.Low)
+			{
+				convolveSpecularSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Radiance/GGX 64"));
+			}
+			if(specularSamples == qualitySamples.Medium)
+			{
+				convolveSpecularSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Radiance/GGX 128"));
+			}
+			if(specularSamples == qualitySamples.High)
+			{
+				convolveSpecularSkybox = new Material(Shader.Find("Hidden/Antonov Suit/Radiance/GGX 256"));
+			}
 		}
 
 		convolveSpecularSkybox.SetInt("_specularSize", size);
 		convolveSpecularSkybox.SetTexture("_SpecCubeIBL", specularCube);
-		convolveSpecularSkybox.SetInt("_specSamples",samples);
 
 		UnityEngine.RenderSettings.skybox = convolveSpecularSkybox;
 
@@ -648,10 +698,19 @@ public class AntonovSuitProbe : MonoBehaviour
 		{
 
 			// v0.035 better way to get exponent with different cubemap size
-			float minExponent = 0.001f;
+			float minExponent = 0.01f;
 
-			float exponent = Mathf.Max((float)specularExponent/(float)size*(float)mip,minExponent);
+			float exponent = Mathf.Max( (float)specularExponent / (float)size * (float)mip, minExponent );
 
+			/*
+			float[] expVal = new float [] {
+				0.01f,0.1f,0.2f,0.3f,0.4f,0.5f,0.6f,0.7f,0.8f,0.9f,1.0f
+			};
+
+			float exponent = expVal[mip];
+
+			convolveSpecularSkybox.SetFloat("_Shininess", exponent );
+			*/
 
 			if( mip == 0 )
 			{
@@ -721,7 +780,7 @@ public class AntonovSuitProbe : MonoBehaviour
 		yield return StartCoroutine(Capture(cubemap, CubemapFace.NegativeY, cubeCamera));
 
 		// v0.035 this fix the ugly mipmap transition
-		cubemap.filterMode = FilterMode.Trilinear;
+		//cubemap.filterMode = FilterMode.Trilinear;
 		cubemap.wrapMode = TextureWrapMode.Clamp;
 
 		cubemap.Apply();
@@ -868,6 +927,10 @@ public class AntonovSuitProbe : MonoBehaviour
 		}
 		#endif
 
+		//Shader.SetGlobalInt("_lodSpecCubeIBL", specularExponent);
+		//Shader.SetGlobalInt("_specularSize", 256);	
+		//Shader.SetGlobalInt("_specSamples",64);
+
 		foreach (GameObject cubeMeshes  in Meshes )
 		{
 			
@@ -935,11 +998,12 @@ public class AntonovSuitProbe : MonoBehaviour
 					if(specularCube != null)
 						mat.SetTexture("_SpecCubeIBL", specularCube);
 
-					mat.SetVector("_exposureIBL", new Vector4(specularExposure,diffuseExposure,0,0));
+					mat.SetVector("_exposureIBL", new Vector4(specularExposure,diffuseExposure,1,1));
 
-					//mat.SetInt("_specularSize", size);	
-					//mat.SetInt("_specSamples",specularSamples);
-					//mat.EnableKeyword("ANTONOV_GGX");
+
+					//mat.SetInt("_specularSize", 256);	
+					//mat.SetInt("_specSamples",32);
+
 				}
 			}
 		}
@@ -965,6 +1029,8 @@ public class AntonovSuitProbe : MonoBehaviour
 		{
 			//Gizmos.color = Color.red;
 			//Gizmos.DrawWireSphere(transform.position, innerprobeRadius );
+			//Rotate the gizmos
+			Gizmos.matrix = transform.localToWorldMatrix;
 			Gizmos.color = Color.green;
 			Gizmos.DrawWireSphere(transform.position, probeRadius );
 			if(useAtten == true)
@@ -977,6 +1043,10 @@ public class AntonovSuitProbe : MonoBehaviour
 		{
 			//Gizmos.color = Color.yellow;
 			//Gizmos.DrawWireCube(transform.position, envInnerBox );
+
+
+			//Rotate the gizmos
+			Gizmos.matrix = transform.localToWorldMatrix;
 			Gizmos.color = Color.blue;
 			Gizmos.DrawWireCube(transform.position, probeBoxSize );
 			if(useAtten == true)

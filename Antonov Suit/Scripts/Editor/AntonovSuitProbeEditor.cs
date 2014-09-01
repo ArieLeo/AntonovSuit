@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.IO;
 
 [CustomEditor(typeof(AntonovSuitProbe))]
-
 public class AntonovSuitProbeEditor : Editor
 {
 
@@ -26,7 +25,7 @@ public class AntonovSuitProbeEditor : Editor
 	private SerializedProperty m_diffuseSize;
 	private SerializedProperty m_specularSize;
 	private SerializedProperty m_smoothEdge;
-	private SerializedProperty m_edgeScale;
+	//private SerializedProperty m_edgeScale;
 	private SerializedProperty m_Meshes;
 	private SerializedProperty m_specularExposure;
 	private SerializedProperty m_diffuseExposure;
@@ -69,7 +68,7 @@ public class AntonovSuitProbeEditor : Editor
 		m_diffuseSize = m_AntonovSuitProbe.FindProperty("diffuseSize");
 		m_specularSize = m_AntonovSuitProbe.FindProperty("specularSize");
 		m_smoothEdge = m_AntonovSuitProbe.FindProperty("smoothEdge");
-		m_edgeScale = m_AntonovSuitProbe.FindProperty("edgeScale");
+		//m_edgeScale = m_AntonovSuitProbe.FindProperty("edgeScale");
 		m_Meshes = m_AntonovSuitProbe.FindProperty("Meshes");
 
 		m_irradianceModel = m_AntonovSuitProbe.FindProperty("irradianceModel");
@@ -139,7 +138,7 @@ public class AntonovSuitProbeEditor : Editor
 			{
 				EditorGUI.indentLevel += 1;
 					EditorGUILayout.PropertyField(m_smoothEdge, new GUIContent("Edge Width"));
-					EditorGUILayout.PropertyField(m_edgeScale, new GUIContent("Edge Scale"));
+					//EditorGUILayout.PropertyField(m_edgeScale, new GUIContent("Edge Scale"));
 				EditorGUI.indentLevel -= 1;
 			}	
 		EditorGUI.indentLevel -= 1;

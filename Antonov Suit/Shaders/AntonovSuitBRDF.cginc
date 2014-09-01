@@ -157,7 +157,6 @@ inline float2 Hammersley(int i, int N)
 // we can get away with 32 samples with a 256x256 cubemap
 inline float calcLOD(int size, float pdf, int NumSamples)
 {
-	// log2(w*h)/N
 	float preCalcLod = log2( (size*size) / NumSamples);
 	return 0.5 * preCalcLod - 0.5 * log2( pdf );
 }
@@ -307,88 +306,6 @@ inline float4 ImportanceSampleGGX( float2 Xi, float Roughness, float3 N)
 	return float4((T * H.x) + (B * H.y) + (N * H.z), pdf);
 }
 
-// Brian Karis, Epic Games "Real Shading in Unreal Engine 4"
-float3 DiffuseIBL(float3 R)
-{
-			
-	float3 N = R;
-	float3 V = R;
-				
-	float4 SampleColor = 0;
-	float TotalWeight = 0;
-	const int NumSamples = _diffSamples;
-	
-	for( int i = 0; i < NumSamples; i++ )
-	{
-		float2 Xi = Hammersley( i, NumSamples );
-
-		float4 L = float4(0,0,0,0);
-		
-		#ifdef ANTONOV_SPHERE
-			L = ImportanceSampleSphereUniform(Xi,N);
-		#endif
-		#ifdef ANTONOV_HEMISPHERE
-			L = ImportanceSampleHemisphereUniform(Xi,N);
-		#endif
-		#ifdef ANTONOV_COSINE
-			L = ImportanceSampleHemisphereCosine(Xi,N);
-		#endif
-
-		float NoL = saturate(dot(N, L));
-
-		if( NoL > 0 )
-		{
-			//SampleColor += DecodeRGBMLinear(texCUBElod(_DiffCubeIBL, float4(L.xyz,calcLOD(_diffuseSize, L.w, NumSamples)))).rgb * NoL;
-			SampleColor += texCUBElod(_DiffCubeIBL, float4(L.xyz,calcLOD(_diffuseSize, L.w, NumSamples))) * NoL;
-			TotalWeight += NoL;
-		}
-	}
-	
-	return DecodeRGBMLinear(SampleColor / TotalWeight);
-}		
-
-// Brian Karis, Epic Games "Real Shading in Unreal Engine 4"
-float3 SpecularIBL( float Roughness, float3 R )
-{
-	float3 N = R;
-	float3 V = R;
-			 
-	float4 SampleColor = 0;
-	float TotalWeight = 0;
-			 
-	float m = Roughness;
-	float m2 = m*m;
-		      
-	const int NumSamples = _specSamples;
-	for( int i = 0; i < NumSamples; i++ )
-	{
-		float2 Xi = Hammersley( i, NumSamples );
-		
-		float4 H = float4(0,0,0,0);
-
-		#ifdef ANTONOV_BLINN
-			H = ImportanceSampleBlinn(Xi, m, N);
-		#endif
-		#ifdef ANTONOV_GGX
-			H = ImportanceSampleGGX(Xi, m, N);
-		#endif
-		
-		float3 L = 2 * dot( V, H ) * H - V;
-			               
-	 	float NoL = saturate( dot( N, L ) );
-	               
-		if( NoL > 0 )
-		{
-			//SampleColor += DecodeRGBMLinear(texCUBElod( _SpecCubeIBL, float4(L, calcLOD(_specularSize, H.w, NumSamples ) ) ) ).rgb * NoL;
-			SampleColor += texCUBElod( _SpecCubeIBL, float4(L, calcLOD(_specularSize, H.w, NumSamples ) ) ) * NoL;
-				                        
-			TotalWeight += NoL;
-		}  
-	}
-	
-	return DecodeRGBMLinear(SampleColor / TotalWeight);
-}
-	
 float3 ApproximateSpecularIBL( float3 SpecularColor , float Roughness, float3 N, float3 V, float4 worldPos )
 {
 	float NoV = saturate( dot( N, V ) );
@@ -470,7 +387,7 @@ float3 ApproximateSpecularIBL( float3 SpecularColor , float Roughness, float3 N,
 	
 	float3 prefilteredColor = DecodeRGBMLinear(texCUBElod(_SpecCubeIBL,float4(R,Roughness * lod))) * attenuation;
 	//float3 prefilteredColor = texCUBElod(_SpecCubeIBL,float4(R,Roughness * lod)) * attenuation;
-	//float3 prefilteredColor = PrefilterEnvMap( Roughness, R ) * attenuation;
+	//float3 prefilteredColor = SpecularIBL( Roughness, R ) * attenuation;
 
 	float3 F = 0;
 		
