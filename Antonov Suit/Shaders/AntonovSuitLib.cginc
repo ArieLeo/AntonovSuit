@@ -92,17 +92,17 @@ float4 gaussianBlurX( sampler2D tex, float2 uv, float2 texSize, float size )
 	float blurXY = size / texSize.x;
 					
 	float4 sum = float4(0,0,0,1);
-	sum.rgb += tex2D(tex, float2(uv.x - 4.0	*	blurXY, uv.y)) * 0.05;   
-	sum.rgb += tex2D(tex, float2(uv.x - 3.0	*	blurXY, uv.y)) * 0.09;
-	sum.rgb += tex2D(tex, float2(uv.x - 2.0	*	blurXY, uv.y)) * 0.12;
-	sum.rgb += tex2D(tex, float2(uv.x - 			blurXY, uv.y)) * 0.15;
-	sum.rgb += tex2D(tex, float2(uv.x					  , uv.y)) * 0.16;
-	sum.rgb += tex2D(tex, float2(uv.x + 			blurXY, uv.y)) * 0.15;
-	sum.rgb += tex2D(tex, float2(uv.x + 2.0	*	blurXY, uv.y)) * 0.12;
-	sum.rgb += tex2D(tex, float2(uv.x + 3.0	*	blurXY, uv.y)) * 0.09;
-	sum.rgb += tex2D(tex, float2(uv.x + 4.0	*	blurXY, uv.y)) * 0.05;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x - 4.0	*	blurXY, uv.y))) * 0.05;   
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x - 3.0	*	blurXY, uv.y))) * 0.09;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x - 2.0	*	blurXY, uv.y))) * 0.12;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x - 			blurXY, uv.y))) * 0.15;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x					  , uv.y))) * 0.16;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x + 			blurXY, uv.y))) * 0.15;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x + 2.0	*	blurXY, uv.y))) * 0.12;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x + 3.0	*	blurXY, uv.y))) * 0.09;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x + 4.0	*	blurXY, uv.y))) * 0.05;
 			 
-	return sum;
+	return HDRtoRGBM(sum);
 }
 				
 float4 gaussianBlurY( sampler2D tex, float2 uv, float2 texSize, float size )
@@ -110,17 +110,17 @@ float4 gaussianBlurY( sampler2D tex, float2 uv, float2 texSize, float size )
 	float blurXY = size / texSize.y;
 					
 	float4 sum = float4(0,0,0,1);
-	sum.rgb += tex2D(tex, float2(uv.x,uv.y - 4.0	*	blurXY)) * 0.05;
-	sum.rgb += tex2D(tex, float2(uv.x,uv.y - 3.0	*	blurXY)) * 0.09;
-	sum.rgb += tex2D(tex, float2(uv.x,uv.y - 2.0	*	blurXY)) * 0.12;
-	sum.rgb += tex2D(tex, float2(uv.x,uv.y - 			blurXY)) * 0.15;
-	sum.rgb += tex2D(tex, float2(uv.x,uv.y				  )) * 0.16;
-	sum.rgb += tex2D(tex, float2(uv.x,uv.y +			blurXY)) * 0.15;
-	sum.rgb += tex2D(tex, float2(uv.x,uv.y + 2.0	*	blurXY)) * 0.12;
-	sum.rgb += tex2D(tex, float2(uv.x,uv.y + 3.0	*	blurXY)) * 0.09;
-	sum.rgb += tex2D(tex, float2(uv.x,uv.y + 4.0	*	blurXY)) * 0.05;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x,uv.y - 4.0	*	blurXY))) * 0.05;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x,uv.y - 3.0	*	blurXY))) * 0.09;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x,uv.y - 2.0	*	blurXY))) * 0.12;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x,uv.y - 			blurXY))) * 0.15;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x,uv.y				  ))) * 0.16;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x,uv.y +			blurXY))) * 0.15;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x,uv.y + 2.0	*	blurXY))) * 0.12;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x,uv.y + 3.0	*	blurXY))) * 0.09;
+	sum.rgb += DecodeRGBMLinear(tex2D(tex, float2(uv.x,uv.y + 4.0	*	blurXY))) * 0.05;
 			 
-	return sum;
+	return HDRtoRGBM(sum);
 }
 
 // Occlusion taking into account the color of the texture multiply to it
@@ -140,6 +140,15 @@ float3 fix_cube_lookup(float3 v, float Roughness ,int mipMap)
 	if (abs(v.y) != M) v.y *= scale;
 	if (abs(v.z) != M) v.z *= scale;
    return v;
+}
+
+float specularOcclusion( float3 N, float3 V, float Occlusion )
+{
+	const float specularPow = 5.0;
+	float NdotV = dot(N, V);
+	float s = saturate(-0.3 + NdotV * NdotV);
+	
+	return lerp(pow(Occlusion, specularPow),1.0, s);
 }
 
 #endif

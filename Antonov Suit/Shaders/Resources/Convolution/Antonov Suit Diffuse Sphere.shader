@@ -1,7 +1,8 @@
-﻿Shader "Hidden/Antonov Suit/Irradiance/Cosine 128" 
+﻿Shader "Hidden/Antonov Suit/Irradiance/Sphere" 
 {
 	Properties 
 	{
+		_diffSamples("Specular Samples", float) = 256
 		_diffuseSize("Diffuse Cube Size", float) = 256
 		_DiffCubeIBL ("Diffuse Cube", Cube) = "black" {}
 	}
@@ -9,6 +10,7 @@
 	{
 		Pass 
 		{
+		
 			CGPROGRAM
 			#pragma vertex vert
 			#pragma fragment frag 
@@ -19,8 +21,7 @@
 			
 			#pragma target 3.0
 			
-			#define ANTONOV_COSINE
-			#define ANTONOV_128_SAMPLES
+			#define ANTONOV_SPHERE
 			#define ANTONOV_IMPORTANCE_DIFFUSE
 			
 			#include "UnityCG.cginc"

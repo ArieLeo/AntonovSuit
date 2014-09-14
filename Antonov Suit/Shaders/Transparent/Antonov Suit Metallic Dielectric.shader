@@ -10,6 +10,7 @@ Shader "Antonov Suit/Metallic Workflow/Transparent/Metallic and Dielectric"
 		_toksvigFactor("Toksvig Factor", Range (0.0,1)) = 0.0	
 		
 		_occlusionAmount ("Occlusion Amount", Range (0,1)) = 1.0
+		_horyzonOcclusion("Horyzon Occlusion Amount", Range (0,1)) = 1.0
 		
 		_RGBTex ("Metallic (R), Roughness (G), Occlusion (B)", 2D) = "white" {}	
 			
@@ -46,7 +47,7 @@ Shader "Antonov Suit/Metallic Workflow/Transparent/Metallic and Dielectric"
 		#define ANTONOV_METALLIC_DIELECTRIC
 		#define ANTONOV_DIFFUSE_LAMBERT
 		#define ANTONOV_TOKSVIG
-		#define ANTONOV_FRESNEL_GGX
+		#define ANTONOV_HORYZON_OCCLUSION
 
 		#include "../AntonovSuitInput.cginc"
 		#include "../AntonovSuitLib.cginc"

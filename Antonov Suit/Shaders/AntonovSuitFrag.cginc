@@ -95,9 +95,24 @@
 				half roughness = sqrt(tex2D(_RGBTex, uv_metallic).y);
 				roughness = roughness*roughness;
 				roughness *= _Shininess;
-
+				
+				//CAVITY
+				#ifdef ANTONOV_SKIN
+					float cavity =  tex2D( _RGBSkinTex, uv_base ).x;
+					cavity = lerp(1.0f, cavity, _cavityAmount);
+				#endif
+				
 				//NORMAL
 				float3 normal = UnpackNormal(tex2D(_BumpMap, uv_bump));
+				
+				#ifdef ANTONOV_SKIN
+					float3 vertexNormal = float3(0,0,1); // Z-Up Vertex tangent space normal
+
+					float3 microNormal = UnpackNormal(tex2D(_BumpMicroTex,uv_bump*_microScale));
+					microNormal = lerp(vertexNormal,microNormal,_microBumpAmount);
+											
+					normal.xy += microNormal.xy;
+				#endif
 				
 				float3 worldNormal = float3(0,0,0);
 				worldNormal.x = dot(i.TtoW0, normal);
@@ -105,7 +120,26 @@
 				worldNormal.z = dot(i.TtoW2, normal);
 			
 				worldNormal = normalize(worldNormal);
+				
+				//VERTEX NORMAL
+				#ifdef ANTONOV_SKIN
+					float3 worldVertexNormal = float3(0,0,0);
+					worldVertexNormal.x = dot(i.TtoW0, vertexNormal);
+					worldVertexNormal.y = dot(i.TtoW1, vertexNormal);
+					worldVertexNormal.z = dot(i.TtoW2, vertexNormal);
+				
+					worldVertexNormal = normalize(worldVertexNormal);
+					
+					float3 blurredNormal = lerp(worldNormal,worldVertexNormal,_BumpLod);
+					
+					//MICRO CAVITY
+					float microCavity = tex2D( _CavityMicroTex, uv_base*_microScale).x;
+					microCavity = saturate(lerp(1.0f,microCavity,_microCavityAmount));
 
+					// CURVATURE
+					float curvature = tex2D(_RGBSkinTex,uv_base).y * _tuneCurvature;
+				#endif
+				
 				//LIGHTMAP
 				half3 lightmap = 1;
 				half3 attenuatedLight = lightColor * atten;
@@ -132,12 +166,25 @@
 				#endif
 				
 				//VECTORS
-				half3 halfVector = normalize(-viewDir+lightDir);
+				#ifdef ANTONOV_SKIN
+					float3 h = -viewDir + lightDir;	
+					half3 halfVector = normalize(h);
+					half HalfLambert = saturate( dot( worldNormal, lightDir ) * 0.5 + 0.5 );
+				#else
+					half3 halfVector = normalize(-viewDir+lightDir);
+				#endif
+				
 				half NdotL = saturate( dot( worldNormal, lightDir ) );
 				half NdotV = saturate( dot( worldNormal, -viewDir ) );
 				half NdotH = saturate( dot( worldNormal, halfVector ) );
 				half LdotH = saturate( dot( lightDir, halfVector ) );
 				half VdotH = saturate( dot( -viewDir, halfVector ) );
+				
+					
+				//SHADOWS
+				#ifdef ANTONOV_SKIN
+					float3 skinShadow = tex2D( _SKIN_LUT,float2(atten,.9999));
+				#endif
 				
 				//VIEW DEPENDENT ROUGHNESS				
 				roughness = lerp( 0.0, roughness, NdotV) * _viewDpdtRoughness + roughness * ( 1 - _viewDpdtRoughness );
@@ -184,11 +231,18 @@
 				#ifdef ANTONOV_DIFFUSE_BURLEY
 					diffuseDirect = Burley(NdotL, NdotV, VdotH, roughness );
 				#endif
-								
-				diffuseDirect *= attenuatedLight;	
-					
-				//SPECULAR	
+				  
+				#ifdef ANTONOV_SKIN
+					diffuseDirect = PennerSkin( float3( _tuneSkinCoeffX,_tuneSkinCoeffY,_tuneSkinCoeffZ ), worldNormal,lightDir, blurredNormal, curvature, _SKIN_LUT, atten );
+				#endif
 				
+				#ifdef ANTONOV_SKIN
+					diffuseDirect *=  lightColor * skinShadow;
+				#else				
+					diffuseDirect *= attenuatedLight;	
+				#endif	
+				
+				//SPECULAR	
 				half4 specular = half4(0,0,0,0);
 				
 				#ifdef ANTONOV_WORKFLOW_SPECULAR
@@ -203,15 +257,23 @@
 				#ifdef ANTONOV_DIELECTRIC
 					specular =  half4(0.04,0.04,0.04,1);
 				#endif
+				
+				#ifdef ANTONOV_SKIN
+					specular = half4(0.028,0.028,0.028,1) * cavity * microCavity;
+				#endif
 
 				#ifdef ANTONOV_METALLIC_DIELECTRIC	
 					half4 specularDielectric = half4(0.04,0.04,0.04,1);
 					specular = lerp(specularDielectric,specular,metallic);
 				#endif
 
-				half D = D_GGX(roughnessAA, NdotH);
-				
-				half G = G_GGX(roughnessAA, NdotL, NdotV);
+				#ifdef ANTONOV_SKIN
+					half D = D_Beckmann(roughness, NdotH);
+					half G = 1;
+				#else
+					half D = D_GGX(roughnessAA, NdotH);
+					half G = G_GGX(roughnessAA, NdotL, NdotV);
+				#endif
 
 				half3 F = F_Schlick( specular, LdotH );
 				
@@ -222,15 +284,25 @@
 					#ifdef ANTONOV_METALLIC_DIELECTRIC
 						attenuatedLight = lerp(Luminance(attenuatedLight), attenuatedLight, metallic);
 					#endif	
-				#endif	
+				#endif
 				
-				half3 specularDirect = D * G * F * NdotL * attenuatedLight;
-				
-				//SPECULAR IBL
-				half3 specularIBL = ApproximateSpecularIBL( specular.rgb, roughness, worldNormal, -viewDir, i.worldPos ) * _exposureIBL.x;
+				#ifdef ANTONOV_SKIN
+					half3 specularDirect = max( D * F / dot( h, h ), 0 ) * NdotL * attenuatedLight;
+				#else
+					half3 specularDirect = D * G * F * NdotL * attenuatedLight;
+				#endif		
 
+				//SPECULAR IBL
+				half3 specularIBL = ApproximateSpecularIBL( specular.rgb, roughness, worldNormal, -viewDir, i.worldPos, i.normal ) * _exposureIBL.x;
+				//half horyzon = saturate( 1 + _horyzonOcclusion * specularOcclusion(i.normal, -viewDir, occlusion) );
+				//specularIBL *= specularOcclusion(i.normal, -viewDir, occlusion);
+		
 				//DIFFUSE IBL
-				half3 diffuseIBL = ApproximateDiffuseIBL(worldNormal) * _exposureIBL.y;
+				#ifdef ANTONOV_SKIN
+					half3 diffuseIBL = diffuseSkinIBL(float3(_tuneSkinCoeffX, _tuneSkinCoeffY, _tuneSkinCoeffZ), ApproximateDiffuseIBL(worldNormal).rgb, ApproximateDiffuseIBL(blurredNormal).rgb) * _exposureIBL.y;
+				#else
+					half3 diffuseIBL = ApproximateDiffuseIBL(worldNormal) * _exposureIBL.y;
+				#endif
 				
 				//AMBIENT
 				half3 ambient = UNITY_LIGHTMODEL_AMBIENT;
@@ -259,11 +331,11 @@
 				#endif
 				
 				#ifdef ANTONOV_FWDBASE
-					frag.rgb = ( diffuseDirect + diffuseIBL + ambient ) * diffuse * diffuseOcclusion;
+					frag.rgb = ( diffuseDirect + diffuseIBL + ambient ) * diffuse * occlusion;
 
 					frag.rgb += ( specularDirect + specularIBL ) * occlusion;
 				#else	
-					frag.rgb = diffuseDirect * diffuse * diffuseOcclusion;
+					frag.rgb = diffuseDirect * diffuse * occlusion;
 					
 					frag.rgb += specularDirect * occlusion;
 				#endif

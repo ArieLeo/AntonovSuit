@@ -13,6 +13,7 @@ Shader "Antonov Suit/Specular Workflow/Self-Illumin/Specular"
 		_SpecTex ("Specular (RGB)", 2D) = "white" {}	
 		
 		_occlusionAmount ("Occlusion Amount", Range (0,1)) = 1.0
+		_horyzonOcclusion("Horyzon Occlusion Amount", Range (0,1)) = 1.0
 		
 		_RGBTex ("Alpha (R), Roughness (G), Occlusion (B)", 2D) = "white" {}
 		
@@ -52,7 +53,7 @@ Shader "Antonov Suit/Specular Workflow/Self-Illumin/Specular"
 		#define ANTONOV_WORKFLOW_SPECULAR
 		#define ANTONOV_DIFFUSE_LAMBERT
 		#define ANTONOV_TOKSVIG
-		#define ANTONOV_FRESNEL_GGX
+		#define ANTONOV_HORYZON_OCCLUSION
 		#define ANTONOV_ILLUM
 
 		#include "../AntonovSuitInput.cginc"

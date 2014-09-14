@@ -101,13 +101,11 @@ int 		_diffuseSize;
 		
 //SPECULAR IBL
 samplerCUBE _SpecCubeIBL;	
-samplerCUBE _SpecCubeIBL_02;
 sampler2D	_ENV_LUT;
 int 		_specularSize;
 int 		_lodSpecCubeIBL;
 
-half		_weight1;
-half		_weight2;
-
+//HORYZON OCCLUSION
+half		_horyzonOcclusion;
 
 #endif

@@ -133,6 +133,8 @@ public class AntonovSuitProbeEditor : Editor
 					//EditorGUILayout.PropertyField(m_specularSize, new GUIContent("Specular Face Size"));
 				EditorGUI.indentLevel -= 1;
 			}
+		if(m_target.isDX11 == false)
+		{
 			c_showSmoothEdge = EditorGUILayout.Foldout(c_showSmoothEdge, "Smooth Edge Settings (DX9)" );	
 			if(c_showSmoothEdge)
 			{
@@ -140,7 +142,9 @@ public class AntonovSuitProbeEditor : Editor
 					EditorGUILayout.PropertyField(m_smoothEdge, new GUIContent("Edge Width"));
 					//EditorGUILayout.PropertyField(m_edgeScale, new GUIContent("Edge Scale"));
 				EditorGUI.indentLevel -= 1;
-			}	
+			}
+		}
+
 		EditorGUI.indentLevel -= 1;
 
 		EditorGUILayout.BeginVertical();

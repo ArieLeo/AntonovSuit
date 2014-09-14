@@ -133,8 +133,32 @@ inline float3 diffuseSkinIBL(float3 skinCoef, float3 diffuseIBL_HighFreq, float3
 {
 	return lerp(diffuseIBL_HighFreq , diffuseIBL_LowFreq, skinCoef);
 }
+/*
+ inline float RadicalInverse(int bits) 
+ {
+     bits = (bits << 16u) | (bits >> 16u);
+     bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+     bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+     bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+     bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+     return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+ }
 
-inline float RadicalInverse( int n, int base)
+inline float2 Hammersley(int i, int N)
+{
+	return float2(float(i) * (1.0/float( N )), RadicalInverse(i));
+}
+
+
+float2 Hammersley( uint Index, uint NumSamples, uint2 Random )
+{
+	float E1 = frac( (float)Index / NumSamples + float( Random.x & 0xffff ) / (1<<16) );
+	float E2 = float( RadicalInverse(Index) ^ Random.y ) * 2.3283064365386963e-10;
+	return float2( E1, E2 );
+}
+*/	
+
+inline  float RadicalInverse( int n, int base)
 {
 	float bits = 0.0f;
 	float invBase = 1.0f / base, invBi = invBase;
@@ -151,15 +175,7 @@ inline float RadicalInverse( int n, int base)
 inline float2 Hammersley(int i, int N)
 {
 	return float2(float(i) * (1.0/float( N )), RadicalInverse(i,3) );
-}
-
-
-// we can get away with 32 samples with a 256x256 cubemap
-inline float calcLOD(int size, float pdf, int NumSamples)
-{
-	float preCalcLod = log2( (size*size) / NumSamples);
-	return 0.5 * preCalcLod - 0.5 * log2( pdf );
-}
+}	
 			
 inline float4 ImportanceSampleIrradiance( float2 Xi,float3 N)
 {
@@ -299,14 +315,14 @@ inline float4 ImportanceSampleGGX( float2 Xi, float Roughness, float3 N)
 	float D = m2 / ( PI*d*d );
 	float pdf = D * CosTheta;
 			 
- 	float3 UpVector = float3(0,1,0);
+ 	float3 UpVector = abs(N.z) < 0.999 ? float3(0,0,1) : float3(1,0,0);
 	float3 T = normalize( cross( UpVector, N ) );
 	float3 B = cross( N, T );
 			 
 	return float4((T * H.x) + (B * H.y) + (N * H.z), pdf);
 }
 
-float3 ApproximateSpecularIBL( float3 SpecularColor , float Roughness, float3 N, float3 V, float4 worldPos )
+float3 ApproximateSpecularIBL( float3 SpecularColor , float Roughness, float3 N, float3 V, float4 worldPos, float3 vN)
 {
 	float NoV = saturate( dot( N, V ) );
 
@@ -316,32 +332,16 @@ float3 ApproximateSpecularIBL( float3 SpecularColor , float Roughness, float3 N,
 
 	#ifdef ANTONOV_SPHERE_PROJECTION
 		float3 probePos = _cubemapPos - worldPos;
-		
-		/*
+
 		// http://http.developer.nvidia.com/GPUGems/gpugems_ch19.html
-		float b = -2.0 * dot(R, probePos);
-		float c = dot(probePos, probePos) - 1;
- 		float discrim = b * b - 4.0 * c;
- 		bool hasIntersects = false;
- 		 if (discrim > 0) 
- 		 {
-    		// pick a small error value very close to zero as "epsilon"
-    		hasIntersects = ((abs(sqrt(discrim) - b) / 2.0) > 0.00001);
- 		 }
- 		 if (hasIntersects) 
- 		 {
-    		// determine where on the unit sphere reflVect intersects
-    		R = _cubemapScale * R - probePos;
-  		}
-		*/
-		
+
 		float b = dot(R, probePos);
 
 		float c = dot(probePos, probePos);
 		float d = c - b * b;
 		float q  = b + sqrt( sqr(_cubemapScale) - d );
 
-		R = worldPos + R * q - _cubemapPos ;
+		R = worldPos + R * q - _cubemapPos;
 
 		//R =  (1 / _cubemapScale) * probePos + R; 	// Lagarde 2012, "Image-based Lighting approaches and parallax-corrected cubemap"	
 
@@ -379,62 +379,34 @@ float3 ApproximateSpecularIBL( float3 SpecularColor , float Roughness, float3 N,
 		#endif
 	#endif
 
-	float lod =_lodSpecCubeIBL;
+	int lod = _lodSpecCubeIBL;
 	
 	#ifdef SHADER_API_D3D9
 		R = fix_cube_lookup(R,Roughness,lod);
 	#endif
 	
 	float3 prefilteredColor = DecodeRGBMLinear(texCUBElod(_SpecCubeIBL,float4(R,Roughness * lod))) * attenuation;
-	//float3 prefilteredColor = texCUBElod(_SpecCubeIBL,float4(R,Roughness * lod)) * attenuation;
-	//float3 prefilteredColor = SpecularIBL( Roughness, R ) * attenuation;
-
-	float3 F = 0;
-		
 	
-	#ifdef ANTONOV_FRESNEL_GGX
-		F =  F_LazarovApprox( SpecularColor,Roughness, NoV );
-	#endif			
-	#ifdef ANTONOV_FRESNEL_BLINN
-		F =  F_LagardeSchlick( SpecularColor,Roughness, NoV );
+	#ifdef ANTONOV_HORYZON_OCCLUSION
+		// http://marmosetco.tumblr.com/post/81245981087
+		float horizon = saturate( 1 + _horyzonOcclusion * dot(R,vN));
+		horizon *= horizon;
+	
+		prefilteredColor *= horizon;
 	#endif
 	
-
-	//return prefilteredColor * F;
+	float F = tex2D(_ENV_LUT, float2(NoV, Roughness)).x;
+	float G = tex2D(_ENV_LUT, float2(NoV, Roughness)).y;
 	
-	float2 F_G = tex2D(_ENV_LUT, float2(NoV, Roughness));
-	return prefilteredColor * ( SpecularColor * F_G.x + F_G.y );
+	return prefilteredColor * ( SpecularColor * F + G );
 }
 
 float3 ApproximateDiffuseIBL(float3 N)
 {
-float attenuation = 1;
-
-/*
-	#ifdef ANTONOV_SPHERE_PROJECTION
-	float3 probePos = _cubemapPos - worldPos;
-		
-	float b = dot(N, probePos);
-
-	float c = dot(probePos, probePos);
-	float d = c - b * b;
-	float q  = b + sqrt( sqr(_cubemapScale) - d );
-
-	N = worldPos + N * q - _cubemapPos ;
-	
-		#ifdef ANTONOV_CUBEMAP_ATTEN
-			float attenRadius = _attenSphereRadius;
-			float attenInnerRadius = attenRadius-2.0f;
-		
-			attenuation =  1 - saturate(( sqrt( c ) - attenInnerRadius ) / ( attenRadius - attenInnerRadius ) );
-		#endif
-	
-	#endif
-*/
+	float attenuation = 1;
 
 	float3 PrefilteredColor = DecodeRGBMLinear(texCUBE(_DiffCubeIBL,N)) * attenuation;
-	//float3 PrefilteredColor = texCUBE(_DiffCubeIBL,N) * attenuation;
-	
+
 	return PrefilteredColor;
 }
 

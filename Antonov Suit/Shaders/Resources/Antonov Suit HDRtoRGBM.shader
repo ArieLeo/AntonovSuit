@@ -28,9 +28,9 @@ v2f vert( appdata_img v )
 
 float4 frag(v2f i) : COLOR 
 {
-	float4 frag = HDRtoRGBM(tex2D(_MainTex, i.uv));
+	float4 frag = tex2D(_MainTex, i.uv);
 
-	return frag;
+	return HDRtoRGBM(frag);
 }
 
 

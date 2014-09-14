@@ -1,8 +1,9 @@
-﻿Shader "Hidden/Antonov Suit/Radiance/Blinn 128" 
+﻿Shader "Hidden/Antonov Suit/Radiance/GGX" 
 {
 	Properties 
 	{
 		_Shininess("Roughness", Range (0.001,1)) = 1.0
+		_specSamples("Specular Samples", float) = 256
 		_specularSize("Specular Cube Size", float) = 256
 		_SpecCubeIBL ("Specular Cube", Cube) = "black" {}
 	}
@@ -30,10 +31,9 @@
 			
 			#pragma target 3.0
 
-			#define ANTONOV_BLINN
-			#define ANTONOV_128_SAMPLES
+			#define ANTONOV_GGX
 			#define ANTONOV_IMPORTANCE_SPECULAR
-			
+
 			#include "UnityCG.cginc"
 			#include "../../AntonovSuitInput.cginc"
 			#include "../../AntonovSuitLib.cginc"
