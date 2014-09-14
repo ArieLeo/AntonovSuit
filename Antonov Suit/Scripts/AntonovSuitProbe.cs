@@ -752,11 +752,12 @@ public class AntonovSuitProbe : MonoBehaviour
 			}
 		}
 
+		// v0.035 this fix the ugly mipmap transition
+		tempCube.filterMode = FilterMode.Trilinear;
+		tempCube.wrapMode = TextureWrapMode.Clamp;
+
 		if (SystemInfo.graphicsShaderLevel != 50)
 		{
-			// v0.035 this fix the ugly mipmap transition
-			tempCube.filterMode = FilterMode.Trilinear;
-			tempCube.wrapMode = TextureWrapMode.Clamp;
 			tempCube.SmoothEdges(smoothEdge);
 		}
 
@@ -803,13 +804,12 @@ public class AntonovSuitProbe : MonoBehaviour
 			yield return StartCoroutine(Capture(tempCube, CubemapFace.NegativeY, cubeCamera));
 		}
 
-
+		// v0.035 this fix the ugly mipmap transition
+		tempCube.filterMode = FilterMode.Trilinear;
+		tempCube.wrapMode = TextureWrapMode.Clamp;
 
 		if (SystemInfo.graphicsShaderLevel != 50)
 		{
-			// v0.035 this fix the ugly mipmap transition
-			tempCube.filterMode = FilterMode.Trilinear;
-			tempCube.wrapMode = TextureWrapMode.Clamp;
 			tempCube.SmoothEdges(smoothEdge);
 		}
 		
